@@ -30,11 +30,32 @@
             <div class="bpm-display">
                 <span class="bpm-main" id="bpmDisplay">--</span>
                 <span class="bpm-sub" id="barBeatDisplay">Bar -, Beat -</span>
-                <span class="bpm-sub" id="cycleDisplay">Cycles: <span id="cycleCount">1</span></span>
+                <div id="directionSymbol"></div>
             </div>
         </div>
 
         <!-- SETTINGS BELOW -->
+         
+        <div class="button-column">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn" class="stop" disabled>Stop</button>
+        </div>
+
+        <h3>Sound Options</h3>
+        <label for="volumeSlider">
+            Volume: <span id="volumeText">100%</span>
+        </label>
+        <input id="volumeSlider" type="range" min="0" max="100" value="100">
+
+        <label for="clickSound">Metronome Sound</label>
+        <select id="clickSound">
+            <option value="beep">Digital Beep</option>
+            <option value="wood">Wood Block</option>
+            <option value="classic">Classic Click</option>
+        </select>
+
+        <button id="previewSoundBtn">Preview Sound</button>
+
         <h3>Beats Per Minute</h3>
         <label for="startBpm">Start BPM</label>
         <input id="startBpm" type="number" value="80" min="20" max="300">
@@ -99,28 +120,9 @@
             <button type="button" class="subdiv-btn" data-subdiv="4">4</button>
         </div>
 
-        <h3>Sound Options</h3>
+        
 
-        <label for="clickSound">Metronome Sound</label>
-        <select id="clickSound">
-            <option value="beep">Digital Beep</option>
-            <option value="wood">Wood Block</option>
-            <option value="classic">Classic Click</option>
-        </select>
 
-        <button id="previewSoundBtn">Preview Sound</button>
-
-        <label for="volumeSlider">
-            Volume: <span id="volumeText">100%</span>
-        </label>
-        <input id="volumeSlider" type="range" min="0" max="100" value="100">
-
-        <div class="button-column">
-            <button id="startBtn">Start</button>
-            <button id="stopBtn" class="stop" disabled>Stop</button>
-        </div>
-
-        <div class="status" id="statusText">Idle.</div>
 
     </div> <!-- end panel -->
 
