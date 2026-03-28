@@ -1,17 +1,20 @@
 /* ---------------------------------------------------------
-   Adaptive Metronome — Corrected Phase Logic
-   - Exact min/max BPM repeat behavior
-   - No extra bars at max BPM
-   - No missing bars at min BPM
-   - Beat 1 accent
-   - Subdivisions on all beats
-   - Circle animation fixed
-   - Proper end-of-cycle behavior
+   Adaptive Metronome — Final Corrected Version
+   - barsPerStep controls bars per BPM step
+   - min/max segments = barsPerStep × (1 + repeats)
+   - Intermediate steps = barsPerStep
+   - Animation starts only on next Beat 1
+   - Clean phase machine (no ghost segments)
 --------------------------------------------------------- */
 
 // -------------------------------
 // DOM ELEMENTS
 // -------------------------------
+const ring             = document.getElementById("beatRing");
+const radius           = ring.r.baseVal.value;
+const circumference    = 2 * Math.PI * radius;
+const directionSymbol = document.getElementById("directionSymbol");
+
 const startBpmInput    = document.getElementById("startBpm");
 const targetBpmInput   = document.getElementById("targetBpm");
 const beatsPerBarInput = document.getElementById("beatsPerBar");
@@ -19,14 +22,13 @@ const bpmStepInput     = document.getElementById("bpmStep");
 
 const maxRepeatsInput  = document.getElementById("maxRepeats");
 const minRepeatsInput  = document.getElementById("minRepeats");
+const barsPerStepInput = document.getElementById("barsPerStep");
 
 const startBtn         = document.getElementById("startBtn");
 const stopBtn          = document.getElementById("stopBtn");
-const statusText       = document.getElementById("statusText");
 
 const bpmDisplay       = document.getElementById("bpmDisplay");
 const barBeatDisplay   = document.getElementById("barBeatDisplay");
-const cycleCountText   = document.getElementById("cycleCount");
 
 const clickSoundSelect = document.getElementById("clickSound");
 const previewSoundBtn  = document.getElementById("previewSoundBtn");
@@ -38,9 +40,6 @@ const enableSubdivCheckbox  = document.getElementById("enableSubdivisions");
 const subdivisionControls   = document.getElementById("subdivisionControls");
 const subdivisionButtons    = document.querySelectorAll(".subdiv-btn");
 
-const ring             = document.getElementById("beatRing");
-const radius           = ring.r.baseVal.value;
-const circumference    = 2 * Math.PI * radius;
 
 ring.style.strokeDasharray = `${circumference}`;
 ring.style.strokeDashoffset = 0;
@@ -129,8 +128,9 @@ let targetBpm = 140;
 let beatsPerBar = 4;
 let bpmStep = 10;
 
-let maxRepeats = 1;
-let minRepeats = 1;
+let maxRepeats = 0;
+let minRepeats = 0;
+let barsPerStep = 1;
 
 let runMode = "once";
 
@@ -140,19 +140,16 @@ let beatIntervalMs = 0;
 let beatInBar = 1;
 let barCount = 1;
 
-let cycleCount = 1;
-
 // PHASE MACHINE
-// "toTarget", "holdTarget", "toStart", "holdStart"
-let phase = "toTarget";
+// "initialMin", "toTarget", "holdTarget", "toStart", "finalMin"
+let phase = "initialMin";
 
-// repeat counters
-let barsAtTarget = 0;
-let barsAtStart  = 0;
+// counters
+let barsRemaining = 0;
 
-// NEW — initial min BPM holds
-let initialMinBarsRemaining = 0;
-let initialMinPhaseDone = false;
+// animation state
+let segmentJustChanged = false;
+let segmentBarsTotal   = 0;
 
 // stop after final bar
 let pendingStop = false;
@@ -163,7 +160,6 @@ let pendingStop = false;
 // -------------------------------
 function startCountdownThenMetronome() {
     countdownActive = true;
-    statusText.textContent = "Countdown...";
 
     bpmDisplay.textContent = "LOADING";
     barBeatDisplay.textContent = "...";
@@ -173,7 +169,7 @@ function startCountdownThenMetronome() {
     const interval = 60000 / startBpm;
 
     setTimeout(() => {
-        let count = 8;
+        let count = 4;
 
         function tick() {
             if (!countdownActive) return;
@@ -187,7 +183,7 @@ function startCountdownThenMetronome() {
                 setTimeout(() => {
                     countdownActive = false;
                     bpmDisplay.textContent = "--";
-                    barBeatDisplay.textContent = "Bar -, Beat -";
+                    barBeatDisplay.textContent = "Beat -, Bar -";
                     startMainMetronome();
                 }, interval);
                 return;
@@ -227,66 +223,169 @@ function stepTowardStart() {
 
 
 // -------------------------------
-// PHASE LOGIC — CORRECTED + INITIAL MIN BPM HOLDS
+// RING ANIMATION
 // -------------------------------
-function handleEndOfBar() {
+function resetRing() {
+    ring.style.transition = "none";
+    ring.style.strokeDashoffset = 0;
+}
 
-    if (phase === "toTarget") {
+function startSegmentAnimation(durationSeconds) {
+    resetRing();
+    ring.getBoundingClientRect();
 
-        // NEW — initial min BPM bars before climbing
-        if (!initialMinPhaseDone) {
-            if (initialMinBarsRemaining > 0) {
-                initialMinBarsRemaining--;
-                return; // stay at start BPM for another bar
-            }
-            initialMinPhaseDone = true;
+    requestAnimationFrame(() => {
+        ring.style.transition = `stroke-dashoffset ${durationSeconds}s linear`;
+        ring.style.strokeDashoffset = circumference;
+    });
+}
+
+
+// -------------------------------
+// PHASE LOGIC
+// -------------------------------
+function updateDirectionSymbol(mode) {
+    if (!directionSymbol) return;
+
+    switch (mode) {
+        case "up":
+            directionSymbol.textContent = "⬆️";
+            break;
+        case "down":
+            directionSymbol.textContent = "⬇️";
+            break;
+        case "stop":
+            directionSymbol.textContent = "🟥";
+            break;
+        case "clear":
+        default:
+            directionSymbol.textContent = "";
+            break;
+    }
+}
+
+function getNextDirectionSymbol() {
+    // If we're already in finalMin, next is stop
+    if (phase === "finalMin") {
+        return "stop";
+    }
+
+    // Going upward toward target
+    if (phase === "initialMin" || phase === "toTarget") {
+        return (startBpm < targetBpm) ? "up" : "down";
+    }
+
+    // Holding target → next is descending
+    if (phase === "holdTarget") {
+        return (startBpm < targetBpm) ? "down" : "up";
+    }
+
+    // Descending toward start
+    if (phase === "toStart") {
+
+        // IMPORTANT FIX:
+        // Only show stop if the *current* BPM is already at startBpm,
+        // meaning the NEXT segment is finalMin.
+        if (currentBpm === startBpm) {
+            return "stop";
         }
 
-        // existing logic
+        // Otherwise still descending
+        return (startBpm < targetBpm) ? "down" : "up";
+    }
+
+    return "clear";
+}
+
+
+
+function handleEndOfBar() {
+    segmentJustChanged = false;
+
+    const minTotalBars = barsPerStep * (1 + minRepeats);
+    const maxTotalBars = barsPerStep * (1 + maxRepeats);
+
+    // INITIAL MIN BPM
+    if (phase === "initialMin") {
+        barsRemaining--;
+        if (barsRemaining > 0) return;
+
+        // Move immediately to first intermediate BPM
         stepTowardTarget();
+        phase = "toTarget";
+        barsRemaining = barsPerStep;
+        segmentJustChanged = true;
+        segmentBarsTotal = barsRemaining;
+        return;
+    }
+
+    // TO TARGET (intermediate steps)
+    if (phase === "toTarget") {
+        barsRemaining--;
+        if (barsRemaining > 0) return;
+
+        stepTowardTarget();
+        segmentJustChanged = true;
 
         if (currentBpm === targetBpm) {
             phase = "holdTarget";
-            barsAtTarget = 0;
-
-            if (maxRepeats === 0 || maxRepeats === 1) {
-                phase = "toStart";
-            }
+            barsRemaining = maxTotalBars;
+            segmentBarsTotal = barsRemaining;
+            return;
         }
+
+        barsRemaining = barsPerStep;
+        segmentBarsTotal = barsRemaining;
         return;
     }
 
+    // HOLD TARGET
     if (phase === "holdTarget") {
-        barsAtTarget++;
+        barsRemaining--;
+        if (barsRemaining > 0) return;
 
-        if (barsAtTarget >= maxRepeats) {
-            phase = "toStart";
-        }
-        return;
-    }
-
-    if (phase === "toStart") {
+        // Begin descending
         stepTowardStart();
-
-        if (currentBpm === startBpm) {
-            phase = "holdStart";
-            barsAtStart = 0;
-        }
+        phase = "toStart";
+        barsRemaining = barsPerStep;
+        segmentJustChanged = true;
+        segmentBarsTotal = barsRemaining;
         return;
     }
 
-    if (phase === "holdStart") {
-        barsAtStart++;
+    // TO START (intermediate descending)
+    if (phase === "toStart") {
 
-        if (barsAtStart > minRepeats) {
-            if (runMode === "once") {
-                pendingStop = true;
-            } else {
-                phase = "toTarget";
-                barsAtTarget = 0;
-                barsAtStart  = 0;
-            }
+        // Only finish THIS bar before stepping down
+        barsRemaining--;
+        if (barsRemaining > 0) return;
+
+        // Now step down to the next BPM
+        stepTowardStart();
+        segmentJustChanged = true;
+
+        // If we have arrived at the start BPM,
+        // begin the final min segment on the NEXT bar
+        if (currentBpm === startBpm) {
+            phase = "finalMin";
+            barsRemaining = minTotalBars;
+            segmentBarsTotal = barsRemaining;
+            return;
         }
+
+        // Otherwise continue descending normally
+        barsRemaining = barsPerStep;
+        segmentBarsTotal = barsRemaining;
+        return;
+    }
+
+
+    // FINAL MIN BPM
+    if (phase === "finalMin") {
+        barsRemaining--;
+        if (barsRemaining > 0) return;
+
+        pendingStop = true;
         return;
     }
 }
@@ -300,21 +399,26 @@ function scheduleNextBeat() {
 
     beatIntervalMs = 60000 / currentBpm;
 
-    ring.style.transition = "none";
-    ring.style.strokeDashoffset = 0;
-
-    ring.getBoundingClientRect();
-
-    requestAnimationFrame(() => {
-        ring.style.transition = `stroke-dashoffset ${beatIntervalMs}ms linear`;
-        ring.style.strokeDashoffset = circumference;
-    });
-
     const isAccentBeat = (beatInBar === 1);
     playMainClick(isAccentBeat);
 
     bpmDisplay.textContent = Math.round(currentBpm);
-    barBeatDisplay.textContent = `Bar ${barCount}, Beat ${beatInBar}`;
+    barBeatDisplay.textContent = `Beat ${beatInBar}, Bar ${barCount}`;
+
+    // Animation starts ONLY when:
+    // - segmentJustChanged is true
+    // - AND beatInBar === 1
+    if (segmentJustChanged && beatInBar === 1) {
+        const secondsPerBeat = 60 / currentBpm;
+        const durationSeconds = segmentBarsTotal * beatsPerBar * secondsPerBeat;
+
+        // NEW: update direction symbol at the exact moment animation begins
+        updateDirectionSymbol(getNextDirectionSymbol());
+
+        startSegmentAnimation(durationSeconds);
+        segmentJustChanged = false;
+    }
+
 
     if (subdivisionsEnabled && subdivisionValue > 1) {
         const subdivInterval = beatIntervalMs / subdivisionValue;
@@ -355,23 +459,17 @@ function startMainMetronome() {
     beatInBar = 1;
     barCount = 1;
 
-    phase = "toTarget";
-    barsAtTarget = 0;
-    barsAtStart  = 0;
+    const minTotalBars = barsPerStep * (1 + minRepeats);
 
-    initialMinBarsRemaining = Math.max(0, minRepeats);
-    initialMinPhaseDone = false;
-
-    cycleCount = 1;
-    cycleCountText.textContent = cycleCount;
+    phase = "initialMin";
+    barsRemaining = minTotalBars;
+    segmentJustChanged = true;
+    segmentBarsTotal = barsRemaining;
 
     pendingStop = false;
     running = true;
 
-    statusText.textContent = (runMode === "once")
-        ? "Running (one full cycle)."
-        : "Running (continuous cycles).";
-
+    resetRing();
     scheduleNextBeat();
 }
 
@@ -385,6 +483,7 @@ function startMetronome() {
 
     maxRepeats  = Number(maxRepeatsInput.value);
     minRepeats  = Number(minRepeatsInput.value);
+    barsPerStep = Number(barsPerStepInput.value) || 1;
 
     runMode     = document.querySelector('input[name="runMode"]:checked').value;
 
@@ -395,6 +494,7 @@ function startMetronome() {
     stopBtn.disabled = false;
 
     startCountdownThenMetronome();
+    updateDirectionSymbol("clear");
 }
 
 function stopMetronome() {
@@ -407,15 +507,14 @@ function stopMetronome() {
         beatTimerId = null;
     }
 
-    ring.style.transition = "none";
-    ring.style.strokeDashoffset = 0;
+    resetRing();
 
     bpmDisplay.textContent = "--";
-    barBeatDisplay.textContent = "Bar -, Beat -";
+    barBeatDisplay.textContent = "Beat -, Bar -";
 
     startBtn.disabled = false;
     stopBtn.disabled = true;
-    statusText.textContent = "Stopped.";
+    updateDirectionSymbol("clear");
 }
 
 
