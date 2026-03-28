@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Adaptive Metronome</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Adaptive Metronome</h1>
+
+<div class="container">
+
+    <!-- EVERYTHING IN ONE COLUMN NOW -->
+    <div class="panel">
+
+        <!-- BEAT VISUAL MOVED HERE -->
+        <div class="circle-wrapper" style="position:relative; margin-bottom: 20px;">
+            <h2>Beat Visual</h2>
+
+            <svg width="220" height="220">
+                <circle id="beatRingBg" cx="110" cy="110" r="90"
+                        stroke="#333" stroke-width="14" fill="none"></circle>
+
+                <circle id="beatRing" cx="110" cy="110" r="90"
+                        stroke="#4caf50" stroke-width="14" fill="none"
+                        stroke-linecap="round"></circle>
+            </svg>
+
+            <div class="bpm-display">
+                <span class="bpm-main" id="bpmDisplay">--</span>
+                <span class="bpm-sub" id="barBeatDisplay">Bar -, Beat -</span>
+                <span class="bpm-sub" id="cycleDisplay">Cycles: <span id="cycleCount">1</span></span>
+            </div>
+        </div>
+
+        <!-- SETTINGS BELOW -->
+        <h3>Beats Per Minute</h3>
+        <label for="startBpm">Start BPM</label>
+        <input id="startBpm" type="number" value="80" min="20" max="300">
+
+        <label for="targetBpm">Target BPM</label>
+        <input id="targetBpm" type="number" value="100" min="20" max="300">
+
+        <h3>Time Signature</h3>
+        <div class="row">
+            <div>
+                <label for="beatsPerBar">Beats / Bar</label>
+                <input id="beatsPerBar" type="number" value="2" min="1" max="16">
+            </div>
+            <div>
+                <label for="barsPerStep">Bars / Tempo Step</label>
+                <input id="barsPerStep" type="number" value="1" min="1" max="64">
+            </div>
+        </div>
+
+        <h3>Speed Changes</h3>
+        <label for="bpmStep">BPM Step</label>
+        <input id="bpmStep" type="number" value="10" min="1" max="50">
+
+        <h3>Repeat at Start and End Options</h3>
+        <label for="maxRepeats">Max BPM Repeat Count</label>
+        <input id="maxRepeats" type="number" value="0" min="0" max="32">
+
+        <label for="minRepeats">Min BPM Repeat Count</label>
+        <input id="minRepeats" type="number" value="0" min="0" max="32">
+
+        <div class="mode-row">
+            <label>
+                <input type="radio" name="runMode" value="once" checked>
+                Once (one full cycle)
+            </label>
+            <label>
+                <input type="radio" name="runMode" value="continuous">
+                Continuous (loop cycles)
+            </label>
+        </div>
+
+        <h3>Accent & Subdivisions</h3>
+
+        <div class="toggle-row">
+            <label>
+                <input type="checkbox" id="accentBeat1" checked>
+                Accent Beat 1
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <label>
+                <input type="checkbox" id="enableSubdivisions">
+                Enable Subdivisions
+            </label>
+        </div>
+
+        <div id="subdivisionControls" class="subdiv-controls hidden">
+            <span>Subdivision:</span>
+            <button type="button" class="subdiv-btn" data-subdiv="2">2</button>
+            <button type="button" class="subdiv-btn" data-subdiv="3">3</button>
+            <button type="button" class="subdiv-btn" data-subdiv="4">4</button>
+        </div>
+
+        <h3>Sound Options</h3>
+
+        <label for="clickSound">Metronome Sound</label>
+        <select id="clickSound">
+            <option value="beep">Digital Beep</option>
+            <option value="wood">Wood Block</option>
+            <option value="classic">Classic Click</option>
+        </select>
+
+        <button id="previewSoundBtn">Preview Sound</button>
+
+        <label for="volumeSlider">
+            Volume: <span id="volumeText">100%</span>
+        </label>
+        <input id="volumeSlider" type="range" min="0" max="100" value="100">
+
+        <div class="button-column">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn" class="stop" disabled>Stop</button>
+        </div>
+
+        <div class="status" id="statusText">Idle.</div>
+
+    </div> <!-- end panel -->
+
+</div> <!-- end container -->
+
+<script src="metronome.js"></script>
+</body>
+</html>

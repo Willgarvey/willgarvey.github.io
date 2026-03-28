@@ -1,0 +1,215 @@
+/* ---------------------------------------------------------
+   GENERAL PAGE LAYOUT
+--------------------------------------------------------- */
+
+body {
+    font-family: system-ui, sans-serif;
+    background: #111;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+/* Container holding the settings panel + visual panel */
+.container {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* ---------------------------------------------------------
+   PANELS (Settings + Visual)
+--------------------------------------------------------- */
+
+.panel {
+    background: #1c1c1c;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #000;
+    min-width: 260px;
+}
+
+.panel h2 {
+    font-size: 1.1rem;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+/* ---------------------------------------------------------
+   FORM ELEMENTS
+--------------------------------------------------------- */
+
+label {
+    display: block;
+    margin: 6px 0 2px;
+    font-size: 0.9rem;
+}
+
+input[type="number"],
+select {
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #111;
+    color: #eee;
+}
+
+/* Two-column rows (beats per bar + bars per step) */
+.row {
+    display: flex;
+    gap: 10px;
+}
+
+.row > div {
+    flex: 1;
+}
+
+/* Radio button row for run mode selection */
+.mode-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: 0.9rem;
+}
+
+.mode-row label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+/* Toggles */
+.toggle-row {
+    margin-top: 6px;
+    font-size: 0.9rem;
+}
+
+.toggle-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Subdivision controls */
+.subdiv-controls {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.subdiv-controls.hidden {
+    display: none;
+}
+
+.subdiv-btn {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #222;
+    color: #eee;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.subdiv-btn.active {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: #fff;
+}
+
+/* ---------------------------------------------------------
+   BUTTONS
+--------------------------------------------------------- */
+
+button {
+    margin-top: 10px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #4caf50;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button.stop {
+    background: #e53935;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* ---------------------------------------------------------
+   STATUS TEXT
+--------------------------------------------------------- */
+
+.status {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+/* ---------------------------------------------------------
+   BEAT VISUAL (SVG Circle)
+--------------------------------------------------------- */
+
+.circle-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+svg {
+    overflow: visible;
+}
+
+/* BPM text overlay inside the circle */
+.bpm-display {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    text-align: center;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.bpm-main {
+    font-size: 2.2rem;
+    font-weight: 700;
+}
+
+.bpm-sub {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+#cycleDisplay {
+    font-size: 0.9rem;
+    color: #aaa;
+    margin-top: 2px;
+}
+
+.button-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
